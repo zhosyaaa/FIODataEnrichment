@@ -23,10 +23,10 @@ type EnrichmentService struct {
 	AgifyAPIClient       *http.Client
 	GenderizeAPIClient   *http.Client
 	NationalizeAPIClient *http.Client
-	DatabaseService      *repository.PersonService
+	DatabaseService      *repository.PersonRepositoryImpl
 }
 
-func NewEnrichmentService(agifyClient, genderizeClient, nationalizeClient *http.Client, dbService *repository.PersonService) *EnrichmentService {
+func NewEnrichmentService(agifyClient, genderizeClient, nationalizeClient *http.Client, dbService *repository.PersonRepositoryImpl) *EnrichmentService {
 	return &EnrichmentService{
 		AgifyAPIClient:       agifyClient,
 		GenderizeAPIClient:   genderizeClient,
