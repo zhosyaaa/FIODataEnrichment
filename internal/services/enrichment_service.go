@@ -5,7 +5,7 @@ import (
 	"TestCase/internal/repository"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -18,6 +18,7 @@ type APIResponse struct {
 		Probability float64 `json:"probability"`
 	} `json:"country"`
 }
+
 type EnrichmentService struct {
 	AgifyAPIClient       *http.Client
 	GenderizeAPIClient   *http.Client
@@ -91,7 +92,7 @@ func (es *EnrichmentService) fetchAPI(apiURL string) (*APIResponse, error) {
 		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

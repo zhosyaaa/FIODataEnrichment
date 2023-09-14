@@ -1,82 +1,68 @@
 package repository
 
 import (
-	"TestCase/internal/models"
+	models2 "TestCase/internal/models"
 	"gorm.io/gorm"
 )
 
-type PersonService struct {
+type PersonRepositoryImpl struct {
 	DB *gorm.DB
 }
 
-func NewDatabaseService(db *gorm.DB) PersonRepository {
-	return &PersonService{
+func NewPersonRepository(db *gorm.DB) *PersonRepositoryImpl {
+	return &PersonRepositoryImpl{
 		DB: db,
 	}
 }
 
-func (p PersonService) CreatePerson(person *models.Person) error {
-	result := p.DB.Create(person)
-	if result.Error != nil {
-		return result.Error
+func (r *PersonRepositoryImpl) GetAllPersons() ([]models2.Person, error) {
+	var persons []models2.Person
+	if err := r.DB.Find(&persons).Error; err != nil {
+		return nil, err
 	}
-	return nil
+	return persons, nil
 }
 
-func (p PersonService) GetPersonByID(id uint) (*models.Person, error) {
-	var person models.Person
-	result := p.DB.First(&person, id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, result.Error
+func (r *PersonRepositoryImpl) GetPersonByID(id uint) (*models2.Person, error) {
+	var person models2.Person
+	if err := r.DB.First(&person, id).Error; err != nil {
+		return nil, err
 	}
 	return &person, nil
 }
 
-func (p PersonService) UpdatePerson(person *models.Person) error {
-	result := p.DB.Save(person)
-	if result.Error != nil {
-		return result.Error
+func (r *PersonRepositoryImpl) CreatePerson(person *models2.Person) error {
+	if err := r.DB.Create(person).Error; err != nil {
+		return err
 	}
 	return nil
 }
 
-func (p PersonService) DeletePersonByID(id uint) error {
-	result := p.DB.Delete(&models.Person{}, id)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return nil
-		}
-		return result.Error
+func (r *PersonRepositoryImpl) UpdatePerson(person *models2.Person) error {
+	if err := r.DB.Save(person).Error; err != nil {
+		return err
 	}
 	return nil
 }
 
-func (p PersonService) FindPeopleByAge(age int) ([]*models.Person, error) {
-	var people []*models.Person
-	result := p.DB.Where("age = ?", age).Find(&people)
-	if result.Error != nil {
-		return nil, result.Error
+func (r *PersonRepositoryImpl) DeletePerson(id int) error {
+	if err := r.DB.Delete(&models2.Person{}, id).Error; err != nil {
+		return err
 	}
-	return people, nil
+	return nil
 }
 
-func (p PersonService) GetAllPeople() ([]*models.Person, error) {
-	var people []*models.Person
-	result := p.DB.Find(&people)
-	if result.Error != nil {
-		return nil, result.Error
+func (r *PersonRepositoryImpl) FilterPersons(gender string, age int, page int, perPage int) ([]models2.Person, error) {
+	var persons []models2.Person
+	query := r.DB
+	if gender != "" {
+		query = query.Where("gender = ?", gender)
 	}
-	return people, nil
-}
-
-func (p PersonService) CustomQuery() ([]*models.Person, error) {
-	var people []*models.Person
-	result := p.DB.Where("age > ? AND gender = ?", 30, "Male").Find(&people)
-	if result.Error != nil {
-		return nil, result.Error
+	if age > 0 {
+		query = query.Where("age = ?", age)
 	}
-	return people, nil
+	if err := query.Offset((page - 1) * perPage).Limit(perPage).Find(&persons).Error; err != nil {
+		return nil, err
+	}
+	return persons, nil
 }
