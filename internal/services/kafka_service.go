@@ -1,13 +1,17 @@
 package services
 
 import (
+	"TestCase/internal/configs"
+	"TestCase/internal/models"
+	"encoding/json"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type KafkaService struct {
-	Consumer *kafka.Consumer
-	Producer *kafka.Producer
+	Consumer          *kafka.Consumer
+	Producer          *kafka.Producer
+	enrichmentService *EnrichmentService
 }
 
 func NewKafkaService(consumer *kafka.Consumer, producer *kafka.Producer) *KafkaService {
@@ -18,25 +22,51 @@ func NewKafkaService(consumer *kafka.Consumer, producer *kafka.Producer) *KafkaS
 }
 
 func (ks *KafkaService) ConsumeMessages() {
-	// Здесь обрабатывайте полученные сообщения из Kafka
+	consumer := configs.InitKafka()
+	defer consumer.Close()
 	for {
 		select {
-		case msg := <-ks.Consumer.Events():
+		case msg := <-consumer.Events():
 			switch ev := msg.(type) {
 			case *kafka.Message:
-				// Обработка Kafka сообщения
-				fmt.Printf("Received message: %s\n", string(ev.Value))
-				// Далее обрабатывайте сообщение и выполняйте необходимые действия
+				go ks.ProcessFIOMessage(ev.Value)
 			case kafka.Error:
-				// Обработка ошибок Kafka
 				fmt.Printf("Kafka error: %v\n", ev)
 			}
 		}
 	}
 }
 
+func (ks *KafkaService) ProcessFIOMessage(message []byte) {
+	var person models.Person
+	if err := json.Unmarshal(message, &person); err != nil {
+		ks.SendToFIOfailed(fmt.Sprintf("Error parsing Kafka message: %v", err))
+		return
+	}
+
+	if !isValidPerson(person) {
+		ks.SendToFIOfailed("Invalid person data: missing required fields or incorrect format")
+		return
+	}
+
+	ks.enrichmentService.FIOChannel <- person.Name
+}
+
+func isValidPerson(person models.Person) bool {
+	if person.Name == "" || person.Surname == "" {
+		return false
+	}
+	return true
+}
+
+func (ks *KafkaService) SendToFIOfailed(reason string) {
+	fioFailedTopic := "FIO_FAILED"
+	message := []byte(reason)
+
+	ks.ProduceMessage(fioFailedTopic, message)
+}
+
 func (ks *KafkaService) ProduceMessage(topic string, message []byte) error {
-	// Отправка сообщения в Kafka
 	deliveryChan := make(chan kafka.Event)
 
 	err := ks.Producer.Produce(&kafka.Message{
@@ -47,13 +77,11 @@ func (ks *KafkaService) ProduceMessage(topic string, message []byte) error {
 	if err != nil {
 		return err
 	}
-
 	e := <-deliveryChan
 	m := e.(*kafka.Message)
 
 	if m.TopicPartition.Error != nil {
 		return m.TopicPartition.Error
 	}
-
 	return nil
 }

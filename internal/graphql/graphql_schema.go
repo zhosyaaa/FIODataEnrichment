@@ -38,3 +38,33 @@ var Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
 	Query:    RootQuery,
 	Mutation: RootMutation,
 })
+
+var PersonType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Person",
+	Fields: graphql.Fields{
+		"Name": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Name of the person",
+		},
+		"Surname": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Surname of the person",
+		},
+		"Patronymic": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Patronymic of the person",
+		},
+		"Age": &graphql.Field{
+			Type:        graphql.Int,
+			Description: "Age of the person",
+		},
+		"Gender": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Gender of the person",
+		},
+		"Nationality": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Nationality of the person",
+		},
+	},
+})

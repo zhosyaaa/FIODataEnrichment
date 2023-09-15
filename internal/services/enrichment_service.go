@@ -1,12 +1,15 @@
 package services
 
 import (
+	"TestCase/internal/configs"
 	"TestCase/internal/models"
 	"TestCase/internal/repository"
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type APIResponse struct {
@@ -24,6 +27,8 @@ type EnrichmentService struct {
 	GenderizeAPIClient   *http.Client
 	NationalizeAPIClient *http.Client
 	DatabaseService      *repository.PersonRepositoryImpl
+	FIOChannel           chan string
+	RedisClient          *redis.Client
 }
 
 func NewEnrichmentService(agifyClient, genderizeClient, nationalizeClient *http.Client, dbService *repository.PersonRepositoryImpl) *EnrichmentService {
@@ -34,26 +39,38 @@ func NewEnrichmentService(agifyClient, genderizeClient, nationalizeClient *http.
 		DatabaseService:      dbService,
 	}
 }
+func init() {
+	configs.InitRedis()
+}
 
 func (es *EnrichmentService) EnrichAndSaveFIO(fioStream <-chan string) {
 	for fio := range fioStream {
-		// Обработка ФИО из потока
-		person := &models.Person{
-			Name: fio,
-		}
+		cachedData, err := configs.GetFromCache(fio)
+		if err == nil {
+			fmt.Printf("Cached data used for: %s\n", fio)
+			var cachedPerson models.Person
+			json.Unmarshal([]byte(cachedData), &cachedPerson)
+		} else {
+			fioInformation := strings.Split(fio, " ")
+			person := &models.Person{
+				Name:       fioInformation[0],
+				Surname:    fioInformation[1],
+				Patronymic: fioInformation[2],
+			}
+			es.enrichPersonData(person)
+			jsonBytes, _ := json.Marshal(person)
+			configs.SetInCache(fio, string(jsonBytes))
 
-		es.enrichPersonData(person)
-
-		// Сохранение данных в базе данных
-		if err := es.DatabaseService.CreatePerson(person); err != nil {
-			fmt.Printf("Ошибка при сохранении данных в базу данных: %v\n", err)
+			if err := es.DatabaseService.CreatePerson(person); err != nil {
+				fmt.Printf("Error saving data to the database: %v\n", err)
+			}
 		}
 	}
 }
 
 func (es *EnrichmentService) enrichPersonData(person *models.Person) {
-	// Обогащение данных о возрасте
-	agifyURL := fmt.Sprintf("https://api.agify.io/?name=%s", person.Name)
+	fio := fmt.Sprintf("%s %s %s", person.Name, person.Surname, person.Patronymic)
+	agifyURL := fmt.Sprintf("https://api.agify.io/?name=%s", fio)
 	agifyResponse, err := es.fetchAPI(agifyURL)
 	if err != nil {
 		fmt.Printf("Ошибка при запросе возраста: %v\n", err)
@@ -69,7 +86,6 @@ func (es *EnrichmentService) enrichPersonData(person *models.Person) {
 	}
 	person.Gender = genderizeResponse.Gender
 
-	// Обогащение данных о национальности
 	nationalizeURL := fmt.Sprintf("https://api.nationalize.io/?name=%s", person.Name)
 	nationalizeResponse, err := es.fetchAPI(nationalizeURL)
 	if err != nil {

@@ -2,51 +2,51 @@ package controllers
 
 //
 //type GraphQLController struct {
-//	// Здесь можно добавить зависимости, если необходимо
+//	// Здесь вы можете добавить зависимости, если это необходимо
 //}
 //
 //func NewGraphQLController() *GraphQLController {
 //	return &GraphQLController{}
 //}
 //
-//// Здесь определите методы для обработки запросов и мутаций GraphQL.
-//// Пример для получения данных с фильтрами и пагинацией:
-//func (gc *GraphQLController) GetPeopleWithFiltersAndPagination(params graphql.ResolveParams) (interface{}, error) {
-//	// Логика для обработки запроса GraphQL с фильтрами и пагинацией
-//	// В этом методе вы можете использовать params для извлечения аргументов запроса и выполнения соответствующих операций.
-//	return nil, nil
+//// HandleGraphQL обрабатывает запросы GraphQL
+//func (c *GraphQLController) HandleGraphQL(c *gin.Context) {
+//	// Здесь вы будете парсить и выполнить запрос GraphQL
+//	// и возвращать результаты
 //}
 //
-//// Продолжайте аналогично для других методов (добавление, удаление, изменение).
+//// GetPersons обрабатывает запрос на получение списка персон
+//func (c *GraphQLController) GetPersons(params graphql.ResolveParams) (interface{}, error) {
+//	// Здесь вы можете вызвать соответствующий метод сервиса или репозитория,
+//	// чтобы получить список персон, и вернуть результат
+//}
 //
-//// Здесь определите корневой запрос (RootQuery) и корневую мутацию (RootMutation) для вашей схемы GraphQL.
-//// Пример корневого запроса:
-//var RootQuery = graphql.NewObject(graphql.ObjectConfig{
-//	Name: "RootQuery",
-//	Fields: graphql.Fields{
-//		"getPeopleWithFiltersAndPagination": &graphql.Field{
-//			Type:        // Укажите тип данных, который этот запрос возвращает,
-//			Description: "Получить людей с фильтрами и пагинацией",
-//			Args: graphql.FieldConfigArgument{
-//			"filters": &graphql.ArgumentConfig{
-//			Type: // Укажите тип аргумента фильтров,
-//		},
-//			"page": &graphql.ArgumentConfig{
-//			Type: graphql.Int,
-//		},
-//			"perPage": &graphql.ArgumentConfig{
-//			Type: graphql.Int,
-//		},
-//		},
-//			Resolve: gc.GetPeopleWithFiltersAndPagination, // Укажите метод контроллера для обработки запроса
-//		},
-//	},
-//})
+//// GetPersonByID обрабатывает запрос на получение персоны по ID
+//func (c *GraphQLController) GetPersonByID(params graphql.ResolveParams) (interface{}, error) {
+//	// Здесь вы можете вызвать соответствующий метод сервиса или репозитория,
+//	// чтобы получить персону по ID, и вернуть результат
+//}
 //
-//// Пример корневой мутации:
-//var RootMutation = graphql.NewObject(graphql.ObjectConfig{
-//	Name: "RootMutation",
-//	Fields: graphql.Fields{
-//		// Здесь определите мутации, например, для добавления, удаления и изменения данных.
-//	},
-//})
+//// CreatePerson обрабатывает мутацию на создание персоны
+//func (c *GraphQLController) CreatePerson(params graphql.ResolveParams) (interface{}, error) {
+//	// Здесь вы можете вызвать соответствующий метод сервиса или репозитория,
+//	// чтобы создать персону, и вернуть результат
+//}
+//
+//// UpdatePerson обрабатывает мутацию на обновление персоны
+//func (c *GraphQLController) UpdatePerson(params graphql.ResolveParams) (interface{}, error) {
+//	// Здесь вы можете вызвать соответствующий метод сервиса или репозитория,
+//	// чтобы обновить персону, и вернуть результат
+//}
+//
+//// DeletePerson обрабатывает мутацию на удаление персоны
+//func (c *GraphQLController) DeletePerson(params graphql.ResolveParams) (interface{}, error) {
+//	// Здесь вы можете вызвать соответствующий метод сервиса или репозитория,
+//	// чтобы удалить персону, и вернуть результат
+//}
+//
+//// FilterPersons обрабатывает запрос на фильтрацию персон
+//func (c *GraphQLController) FilterPersons(params graphql.ResolveParams) (interface{}, error) {
+//	// Здесь вы можете вызвать соответствующий метод сервиса или репозитория,
+//	// чтобы выполнить фильтрацию персон, и вернуть результат
+//}

@@ -1,25 +1,25 @@
 package configs
 
 import (
-	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"os"
 )
 
 func InitKafka() *kafka.Consumer {
 	config := &kafka.ConfigMap{
-		"bootstrap.servers": os.Getenv("KAFKA_BROKER_URL"), // Пример: localhost:9092
+		"bootstrap.servers": os.Getenv("KAFKA_BROKER_URL"),
 		"group.id":          "my-group",
 		"auto.offset.reset": "earliest",
 	}
 
 	consumer, err := kafka.NewConsumer(config)
 	if err != nil {
-		fmt.Printf("Error creating Kafka consumer: %v\n", err)
-		return nil
+		//fmt.Printf("Error creating Kafka consumer: %v\n", err)
+		//return nil
+		panic(err)
 	}
 
-	topics := []string{"FIO"} // Названия топиков Kafka для подписки
+	topics := []string{"FIO"}
 	consumer.SubscribeTopics(topics, nil)
 
 	return consumer

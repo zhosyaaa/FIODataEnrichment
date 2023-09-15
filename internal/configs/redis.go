@@ -7,9 +7,7 @@ import (
 	"os"
 )
 
-var (
-	RedisClient *redis.Client
-)
+var redisClient *redis.Client
 
 func InitRedis() *redis.Client {
 	redisAddr := os.Getenv("REDIS_ADDR")
@@ -26,7 +24,14 @@ func InitRedis() *redis.Client {
 		fmt.Printf("Error connecting to Redis: %v\n", err)
 		return nil
 	}
-
-	RedisClient = client
+	redisClient = client
 	return client
+}
+
+func GetFromCache(key string) (string, error) {
+	return redisClient.Get(context.Background(), key).Result()
+}
+
+func SetInCache(key string, value string) error {
+	return redisClient.Set(context.Background(), key, value, 0).Err()
 }
