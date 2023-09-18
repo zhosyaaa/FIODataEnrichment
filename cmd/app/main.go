@@ -11,6 +11,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +20,11 @@ import (
 	"time"
 )
 
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
 func main() {
 	configs.InitRedis()
 	configs.InitKafka()
@@ -32,6 +39,8 @@ func main() {
 		&http.Client{},
 		&http.Client{},
 		personRepo,
+		make(chan string),
+		redisClient,
 	)
 
 	cacheClient := redis.NewCacheClient(redisClient)
@@ -51,6 +60,7 @@ func main() {
 		}
 	}()
 
+	go enrichmentService.EnrichAndSaveFIO()
 	fmt.Println("Server is running on :8080")
 
 	quit := make(chan os.Signal, 1)

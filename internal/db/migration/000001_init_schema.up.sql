@@ -1,9 +1,12 @@
-CREATE TABLE IF NOT EXISTS fio_data (
+CREATE TABLE IF NOT EXISTS people (
     id SERIAL PRIMARY KEY,
-    "name" VARCHAR(255),
-    surname VARCHAR(255),
-    patronymic VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    name TEXT,
+    surname TEXT,
+    patronymic TEXT,
     age INT,
-    gender VARCHAR(10),
-    nationality VARCHAR(255)
+    gender TEXT,
+    nationality TEXT
 );

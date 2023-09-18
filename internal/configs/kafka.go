@@ -1,26 +1,17 @@
 package configs
 
 import (
-	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/segmentio/kafka-go"
 	"os"
 )
 
-func InitKafka() *kafka.Consumer {
-	config := &kafka.ConfigMap{
-		"bootstrap.servers": os.Getenv("KAFKA_BROKER_URL"),
-		"group.id":          "my-group",
-		"auto.offset.reset": "earliest",
+func InitKafka() *kafka.Reader {
+	config := kafka.ReaderConfig{
+		Brokers: []string{os.Getenv("KAFKA_BROKER_URL")},
+		GroupID: "my-group",
+		Topic:   "FIO",
 	}
 
-	consumer, err := kafka.NewConsumer(config)
-	if err != nil {
-		//fmt.Printf("Error creating Kafka consumer: %v\n", err)
-		//return nil
-		panic(err)
-	}
-
-	topics := []string{"FIO"}
-	consumer.SubscribeTopics(topics, nil)
-
-	return consumer
+	reader := kafka.NewReader(config)
+	return reader
 }

@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS fio_data;
+DROP TABLE IF EXISTS people;

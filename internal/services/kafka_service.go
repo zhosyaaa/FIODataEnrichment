@@ -3,37 +3,37 @@ package services
 import (
 	"TestCase/internal/configs"
 	"TestCase/internal/models"
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/segmentio/kafka-go"
 )
 
 type KafkaService struct {
-	Consumer          *kafka.Consumer
-	Producer          *kafka.Producer
+	Reader            *kafka.Reader
+	Writer            *kafka.Writer
 	enrichmentService *EnrichmentService
 }
 
-func NewKafkaService(consumer *kafka.Consumer, producer *kafka.Producer) *KafkaService {
+func NewKafkaService(reader *kafka.Reader, writer *kafka.Writer) *KafkaService {
 	return &KafkaService{
-		Consumer: consumer,
-		Producer: producer,
+		Reader: reader,
+		Writer: writer,
 	}
 }
 
 func (ks *KafkaService) ConsumeMessages() {
-	consumer := configs.InitKafka()
-	defer consumer.Close()
+	reader := configs.InitKafka()
+	defer reader.Close()
+
 	for {
-		select {
-		case msg := <-consumer.Events():
-			switch ev := msg.(type) {
-			case *kafka.Message:
-				go ks.ProcessFIOMessage(ev.Value)
-			case kafka.Error:
-				fmt.Printf("Kafka error: %v\n", ev)
-			}
+		msg, err := reader.ReadMessage(context.Background())
+		if err != nil {
+			fmt.Printf("Error reading Kafka message: %v\n", err)
+			return
 		}
+
+		go ks.ProcessFIOMessage(msg.Value)
 	}
 }
 
@@ -67,21 +67,17 @@ func (ks *KafkaService) SendToFIOfailed(reason string) {
 }
 
 func (ks *KafkaService) ProduceMessage(topic string, message []byte) error {
-	deliveryChan := make(chan kafka.Event)
+	writer := ks.Writer
 
-	err := ks.Producer.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          message,
-	}, deliveryChan)
-
+	err := writer.WriteMessages(context.Background(),
+		kafka.Message{
+			Key:   nil,
+			Value: message,
+		},
+	)
 	if err != nil {
 		return err
 	}
-	e := <-deliveryChan
-	m := e.(*kafka.Message)
 
-	if m.TopicPartition.Error != nil {
-		return m.TopicPartition.Error
-	}
 	return nil
 }

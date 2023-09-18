@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type APIResponse struct {
@@ -31,23 +32,18 @@ type EnrichmentService struct {
 	RedisClient          *redis.Client
 }
 
-func NewEnrichmentService(agifyClient, genderizeClient, nationalizeClient *http.Client, dbService *repository.PersonRepositoryImpl) *EnrichmentService {
-	return &EnrichmentService{
-		AgifyAPIClient:       agifyClient,
-		GenderizeAPIClient:   genderizeClient,
-		NationalizeAPIClient: nationalizeClient,
-		DatabaseService:      dbService,
-	}
+func NewEnrichmentService(agifyAPIClient *http.Client, genderizeAPIClient *http.Client, nationalizeAPIClient *http.Client, databaseService *repository.PersonRepositoryImpl, FIOChannel chan string, redisClient *redis.Client) *EnrichmentService {
+	return &EnrichmentService{AgifyAPIClient: agifyAPIClient, GenderizeAPIClient: genderizeAPIClient, NationalizeAPIClient: nationalizeAPIClient, DatabaseService: databaseService, FIOChannel: make(chan string), RedisClient: redisClient}
 }
+
 func init() {
 	configs.InitRedis()
 }
 
-func (es *EnrichmentService) EnrichAndSaveFIO(fioStream <-chan string) {
-	for fio := range fioStream {
+func (es *EnrichmentService) EnrichAndSaveFIO() {
+	for fio := range es.FIOChannel {
 		cachedData, err := configs.GetFromCache(fio)
 		if err == nil {
-			fmt.Printf("Cached data used for: %s\n", fio)
 			var cachedPerson models.Person
 			json.Unmarshal([]byte(cachedData), &cachedPerson)
 		} else {
@@ -64,24 +60,23 @@ func (es *EnrichmentService) EnrichAndSaveFIO(fioStream <-chan string) {
 			if err := es.DatabaseService.CreatePerson(person); err != nil {
 				fmt.Printf("Error saving data to the database: %v\n", err)
 			}
+
 		}
 	}
 }
 
 func (es *EnrichmentService) enrichPersonData(person *models.Person) {
-	fio := fmt.Sprintf("%s %s %s", person.Name, person.Surname, person.Patronymic)
-	agifyURL := fmt.Sprintf("https://api.agify.io/?name=%s", fio)
+	agifyURL := fmt.Sprintf("https://api.agify.io/?name=%s", person.Name)
 	agifyResponse, err := es.fetchAPI(agifyURL)
 	if err != nil {
-		fmt.Printf("Ошибка при запросе возраста: %v\n", err)
+		fmt.Printf("Error requesting age information: %v\n", err)
 		return
 	}
 	person.Age = agifyResponse.Age
-
 	genderizeURL := fmt.Sprintf("https://api.genderize.io/?name=%s", person.Name)
 	genderizeResponse, err := es.fetchAPI(genderizeURL)
 	if err != nil {
-		fmt.Printf("Ошибка при запросе пола: %v\n", err)
+		fmt.Printf("Error requesting gender information: %v\n", err)
 		return
 	}
 	person.Gender = genderizeResponse.Gender
@@ -89,7 +84,7 @@ func (es *EnrichmentService) enrichPersonData(person *models.Person) {
 	nationalizeURL := fmt.Sprintf("https://api.nationalize.io/?name=%s", person.Name)
 	nationalizeResponse, err := es.fetchAPI(nationalizeURL)
 	if err != nil {
-		fmt.Printf("Ошибка при запросе национальности: %v\n", err)
+		fmt.Printf("Error requesting nationality information: %v\n", err)
 		return
 	}
 	if len(nationalizeResponse.Country) > 0 {
@@ -98,7 +93,16 @@ func (es *EnrichmentService) enrichPersonData(person *models.Person) {
 }
 
 func (es *EnrichmentService) fetchAPI(apiURL string) (*APIResponse, error) {
-	resp, err := es.AgifyAPIClient.Get(apiURL)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Proto = "HTTP/1.1"
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +116,6 @@ func (es *EnrichmentService) fetchAPI(apiURL string) (*APIResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var apiResponse APIResponse
 	err = json.Unmarshal(body, &apiResponse)
 	if err != nil {
