@@ -42,6 +42,7 @@ func init() {
 
 func (es *EnrichmentService) EnrichAndSaveFIO() {
 	for fio := range es.FIOChannel {
+		fmt.Println(fio)
 		cachedData, err := configs.GetFromCache(fio)
 		if err == nil {
 			var cachedPerson models.Person

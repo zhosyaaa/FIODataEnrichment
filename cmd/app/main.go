@@ -8,15 +8,11 @@ import (
 	"TestCase/internal/repository"
 	"TestCase/internal/routes"
 	"TestCase/internal/services"
-	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 )
 
@@ -25,54 +21,49 @@ func init() {
 		log.Fatal("Error loading .env file")
 	}
 }
+
 func main() {
-	configs.InitRedis()
-	configs.InitKafka()
 	db.InitDatabase()
+	redisClient := configs.InitRedis()
+	if redisClient == nil {
+		log.Fatal("Failed to initialize Redis client")
+		return
+	}
+	defer redisClient.Close()
 
 	router := gin.Default()
-
-	personRepo := repository.NewPersonRepository(db.DB)
-	redisClient := configs.InitRedis()
+	personRepository := repository.NewPersonRepository(db.DB)
 	enrichmentService := services.NewEnrichmentService(
 		&http.Client{},
 		&http.Client{},
 		&http.Client{},
-		personRepo,
+		personRepository,
 		make(chan string),
 		redisClient,
 	)
+	go enrichmentService.EnrichAndSaveFIO()
+
+	kafkaReader := configs.InitKafkaReader()
+	kafkaWriter := configs.InitKafkaWriter()
+	kafkaService := services.NewKafkaService(kafkaReader, kafkaWriter, enrichmentService)
+	go kafkaService.ConsumeMessages()
 
 	cacheClient := redis.NewCacheClient(redisClient)
-	apiController := controllers.NewAPIController(personRepo, *cacheClient, enrichmentService)
-
+	apiController := controllers.NewAPIController(personRepository, *cacheClient, enrichmentService)
 	apiRoutes := routes.NewRoutes(*apiController)
 	apiRoutes.SetupAPIRoutes(router)
 
+	serverPort := "8080"
 	server := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
+		Addr:         ":" + serverPort,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
 	}
 
-	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("HTTP server error: %v\n", err)
-		}
-	}()
+	fmt.Printf("Server is running on port %s...\n", serverPort)
 
-	go enrichmentService.EnrichAndSaveFIO()
-	fmt.Println("Server is running on :8080")
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	fmt.Println("Shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
-		fmt.Printf("Server shutdown error: %v\n", err)
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatalf("Server error: %v", err)
 	}
-
-	fmt.Println("Server gracefully stopped")
 }

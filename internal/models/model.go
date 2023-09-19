@@ -15,6 +15,5 @@ type Person struct {
 type Input struct {
 	Name       string `json:"name"`
 	Surname    string `json:"surname"`
-	Patronymic string `json:"
-"`
+	Patronymic string `json:"patronymic"`
 }

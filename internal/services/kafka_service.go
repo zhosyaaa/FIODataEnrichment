@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/segmentio/kafka-go"
+	"sync"
 )
 
 type KafkaService struct {
@@ -15,16 +16,14 @@ type KafkaService struct {
 	enrichmentService *EnrichmentService
 }
 
-func NewKafkaService(reader *kafka.Reader, writer *kafka.Writer) *KafkaService {
-	return &KafkaService{
-		Reader: reader,
-		Writer: writer,
-	}
+func NewKafkaService(reader *kafka.Reader, writer *kafka.Writer, enrichmentService *EnrichmentService) *KafkaService {
+	return &KafkaService{Reader: reader, Writer: writer, enrichmentService: enrichmentService}
 }
 
 func (ks *KafkaService) ConsumeMessages() {
-	reader := configs.InitKafka()
+	reader := configs.InitKafkaReader()
 	defer reader.Close()
+	var mu sync.Mutex
 
 	for {
 		msg, err := reader.ReadMessage(context.Background())
@@ -32,27 +31,30 @@ func (ks *KafkaService) ConsumeMessages() {
 			fmt.Printf("Error reading Kafka message: %v\n", err)
 			return
 		}
-
-		go ks.ProcessFIOMessage(msg.Value)
+		var person models.Input
+		if err := json.Unmarshal(msg.Value, &person); err != nil {
+			ks.SendToFIOfailed(fmt.Sprintf("Error parsing Kafka message: %v", err))
+			return
+		}
+		if isValidPerson(person) {
+			mu.Lock()
+			ks.ProcessFIOMessage(person)
+			mu.Unlock()
+		}
 	}
 }
 
-func (ks *KafkaService) ProcessFIOMessage(message []byte) {
-	var person models.Person
-	if err := json.Unmarshal(message, &person); err != nil {
-		ks.SendToFIOfailed(fmt.Sprintf("Error parsing Kafka message: %v", err))
-		return
-	}
-
+func (ks *KafkaService) ProcessFIOMessage(person models.Input) {
+	fmt.Println("ProcessFIOMessage: ", person.Name)
 	if !isValidPerson(person) {
 		ks.SendToFIOfailed("Invalid person data: missing required fields or incorrect format")
 		return
 	}
-
-	ks.enrichmentService.FIOChannel <- person.Name
+	fio := fmt.Sprintf("%s %s %s", person.Name, person.Surname, person.Patronymic)
+	ks.enrichmentService.FIOChannel <- fio
 }
 
-func isValidPerson(person models.Person) bool {
+func isValidPerson(person models.Input) bool {
 	if person.Name == "" || person.Surname == "" {
 		return false
 	}
