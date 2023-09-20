@@ -4,6 +4,7 @@ import (
 	"TestCase/internal/configs"
 	"TestCase/internal/controllers"
 	"TestCase/internal/db"
+	"TestCase/internal/graphql"
 	"TestCase/internal/redis"
 	"TestCase/internal/repository"
 	"TestCase/internal/routes"
@@ -48,9 +49,10 @@ func main() {
 	kafkaService := services.NewKafkaService(kafkaReader, kafkaWriter, enrichmentService)
 	go kafkaService.ConsumeMessages()
 
+	GraphQLResolver := graphql.NewResolver(*personRepository)
 	cacheClient := redis.NewCacheClient(redisClient)
 	apiController := controllers.NewAPIController(personRepository, *cacheClient, enrichmentService)
-	apiRoutes := routes.NewRoutes(*apiController)
+	apiRoutes := routes.NewRoutes(*apiController, GraphQLResolver)
 	apiRoutes.SetupAPIRoutes(router)
 
 	serverPort := "8080"

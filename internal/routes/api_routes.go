@@ -2,15 +2,18 @@ package routes
 
 import (
 	apiController "TestCase/internal/controllers"
+	"TestCase/internal/graphql"
 	"github.com/gin-gonic/gin"
+	"github.com/graphql-go/handler"
 )
 
 type Routes struct {
 	apiController.APIController
+	GraphQLResolver *graphql.Resolver
 }
 
-func NewRoutes(APIController apiController.APIController) *Routes {
-	return &Routes{APIController: APIController}
+func NewRoutes(APIController apiController.APIController, graphQLResolver *graphql.Resolver) *Routes {
+	return &Routes{APIController: APIController, GraphQLResolver: graphQLResolver}
 }
 
 func (r *Routes) SetupAPIRoutes(router *gin.Engine) {
@@ -23,4 +26,11 @@ func (r *Routes) SetupAPIRoutes(router *gin.Engine) {
 		api.DELETE("/persons/:id", r.DeletePerson)
 		api.GET("/persons/filter", r.FilterPersons)
 	}
+	graphqlHandler := handler.New(&handler.Config{
+		Schema:   &graphql.Schema,
+		Pretty:   true,
+		GraphiQL: true,
+	})
+	router.POST("/graphql", gin.WrapH(graphqlHandler))
+
 }
