@@ -61,23 +61,17 @@ The service also provides a GraphQL API accessible at 'http://localhost:8080/gra
 
 Example GraphQL query for adding a new person:
 
-    mutation {
-        createPerson(input: {
-            name: "Dmitriy",
-            surname: "Ushakov",
-            patronymic: "Vasilevich"
-        }) {
-          id
-        }
-    }
+      mutation {
+         createPerson(input: {
+            name: "John"
+            surname: "Doe"
+         }) {
+            name
+            surname
+            patronymic
+            age
+            gender
+            nationality
+         }
+      }
 
-## Caching
-Data is cached in Redis to improve performance. Caching is configured using environment variables in the .env file.
-
-## Logging
-Logging is done using the standard Go log package. Logs are written to the app.log file in the project's root directory.
-
-## Testing
-You can run unit tests using the following command:
-
-    go test ./...
