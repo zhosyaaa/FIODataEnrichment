@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis/v8"
+	"github.com/rs/zerolog/log" // Импортируйте zerolog
 	"io"
 	"net/http"
 	"strings"
@@ -42,7 +43,6 @@ func init() {
 
 func (es *EnrichmentService) EnrichAndSaveFIO() {
 	for fio := range es.FIOChannel {
-		fmt.Println(fio)
 		cachedData, err := configs.GetFromCache(fio)
 		if err == nil {
 			var cachedPerson models.Person
@@ -59,9 +59,8 @@ func (es *EnrichmentService) EnrichAndSaveFIO() {
 			configs.SetInCache(fio, string(jsonBytes))
 
 			if err := es.DatabaseService.CreatePerson(person); err != nil {
-				fmt.Printf("Error saving data to the database: %v\n", err)
+				log.Error().Err(err).Msg("Error saving data to the database")
 			}
-
 		}
 	}
 }
@@ -70,14 +69,14 @@ func (es *EnrichmentService) enrichPersonData(person *models.Person) {
 	agifyURL := fmt.Sprintf("https://api.agify.io/?name=%s", person.Name)
 	agifyResponse, err := es.fetchAPI(agifyURL)
 	if err != nil {
-		fmt.Printf("Error requesting age information: %v\n", err)
+		log.Error().Err(err).Msg("Error requesting age information")
 		return
 	}
 	person.Age = agifyResponse.Age
 	genderizeURL := fmt.Sprintf("https://api.genderize.io/?name=%s", person.Name)
 	genderizeResponse, err := es.fetchAPI(genderizeURL)
 	if err != nil {
-		fmt.Printf("Error requesting gender information: %v\n", err)
+		log.Error().Err(err).Msg("Error requesting gender information")
 		return
 	}
 	person.Gender = genderizeResponse.Gender
@@ -85,7 +84,7 @@ func (es *EnrichmentService) enrichPersonData(person *models.Person) {
 	nationalizeURL := fmt.Sprintf("https://api.nationalize.io/?name=%s", person.Name)
 	nationalizeResponse, err := es.fetchAPI(nationalizeURL)
 	if err != nil {
-		fmt.Printf("Error requesting nationality information: %v\n", err)
+		log.Error().Err(err).Msg("Error requesting nationality information")
 		return
 	}
 	if len(nationalizeResponse.Country) > 0 {

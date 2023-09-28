@@ -12,14 +12,14 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"log"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"time"
 )
 
 func init() {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal().Err(err).Msg("Error loading .env file")
 	}
 }
 
@@ -27,7 +27,7 @@ func main() {
 	db.InitDatabase()
 	redisClient := configs.InitRedis()
 	if redisClient == nil {
-		log.Fatal("Failed to initialize Redis client")
+		log.Fatal().Msg("Failed to initialize Redis client")
 		return
 	}
 	defer redisClient.Close()
@@ -66,6 +66,6 @@ func main() {
 	fmt.Printf("Server is running on port %s...\n", serverPort)
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("Server error: %v", err)
+		log.Fatal().Err(err).Msg("Server error")
 	}
 }

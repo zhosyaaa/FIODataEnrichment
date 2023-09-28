@@ -7,6 +7,7 @@ import (
 	"TestCase/internal/repository"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
 )
@@ -24,6 +25,7 @@ func NewAPIController(personRepository repository.PersonRepository, cacheClient 
 func (ac *APIController) GetPersons(c *gin.Context) {
 	persons, err := ac.PersonRepository.GetAllPersons()
 	if err != nil {
+		log.Error().Err(err).Msg("Error getting all persons")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -33,6 +35,7 @@ func (ac *APIController) GetPersons(c *gin.Context) {
 func (ac *APIController) CreatePerson(c *gin.Context) {
 	var input *models.Input
 	if err := c.BindJSON(&input); err != nil {
+		log.Error().Err(err).Msg("Error binding JSON")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -52,6 +55,7 @@ func (ac *APIController) GetPerson(c *gin.Context) {
 	idParam := c.Param("id")
 	personID, err := strconv.Atoi(idParam)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid person ID")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid person ID"})
 		return
 	}
@@ -64,11 +68,13 @@ func (ac *APIController) GetPerson(c *gin.Context) {
 
 	person, err = ac.PersonRepository.GetPersonByID(uint(personID))
 	if err != nil {
+		log.Error().Err(err).Msg("Error getting person by ID")
 		c.JSON(http.StatusNotFound, gin.H{"error": "Person not found"})
 		return
 	}
 
 	if err := ac.CacheClient.SetPerson(*person); err != nil {
+		log.Error().Err(err).Msg("Error setting person in cache")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -80,18 +86,21 @@ func (ac *APIController) UpdatePerson(c *gin.Context) {
 	idParam := c.Param("id")
 	personID, err := strconv.Atoi(idParam)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid person ID")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid person ID"})
 		return
 	}
 
 	var updatedPerson models.Person
 	if err := c.BindJSON(&updatedPerson); err != nil {
+		log.Error().Err(err).Msg("Error binding JSON")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	existingPerson, err := ac.PersonRepository.GetPersonByID(uint(personID))
 	if err != nil {
+		log.Error().Err(err).Msg("Error getting person by ID")
 		c.JSON(http.StatusNotFound, gin.H{"error": "Person not found"})
 		return
 	}
@@ -104,11 +113,13 @@ func (ac *APIController) UpdatePerson(c *gin.Context) {
 	existingPerson.Nationality = updatedPerson.Nationality
 
 	if err := ac.PersonRepository.UpdatePerson(existingPerson); err != nil {
+		log.Error().Err(err).Msg("Error updating person")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if err := ac.CacheClient.SetPerson(*existingPerson); err != nil {
+		log.Error().Err(err).Msg("Error setting person in cache")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -120,16 +131,19 @@ func (ac *APIController) DeletePerson(c *gin.Context) {
 	idParam := c.Param("id")
 	personID, err := strconv.Atoi(idParam)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid person ID")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid person ID"})
 		return
 	}
 
 	if err := ac.PersonRepository.DeletePerson(personID); err != nil {
+		log.Error().Err(err).Msg("Error deleting person")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if err := ac.CacheClient.DeletePerson(uint(personID)); err != nil {
+		log.Error().Err(err).Msg("Error deleting person from cache")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -145,24 +159,28 @@ func (ac *APIController) FilterPersons(c *gin.Context) {
 
 	age, err := strconv.Atoi(ageParam)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid age parameter")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid age parameter"})
 		return
 	}
 
 	page, err := strconv.Atoi(pageParam)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid page parameter")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid page parameter"})
 		return
 	}
 
 	perPage, err := strconv.Atoi(perPageParam)
 	if err != nil {
+		log.Error().Err(err).Msg("Invalid per_page parameter")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid per_page parameter"})
 		return
 	}
 
 	filteredPersons, err := ac.PersonRepository.FilterPersons(gender, age, page, perPage)
 	if err != nil {
+		log.Error().Err(err).Msg("Error filtering persons")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

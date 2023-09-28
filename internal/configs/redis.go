@@ -2,8 +2,8 @@ package configs
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-redis/redis/v8"
+	"github.com/rs/zerolog/log"
 	"os"
 )
 
@@ -21,17 +21,28 @@ func InitRedis() *redis.Client {
 	ctx := context.Background()
 	_, err := client.Ping(ctx).Result()
 	if err != nil {
-		fmt.Printf("Error connecting to Redis: %v\n", err)
+		log.Error().Err(err).Msg("Error connecting to Redis")
 		return nil
 	}
 	redisClient = client
+	log.Info().Msg("Connected to Redis")
 	return client
 }
 
 func GetFromCache(key string) (string, error) {
-	return redisClient.Get(context.Background(), key).Result()
+	val, err := redisClient.Get(context.Background(), key).Result()
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting data from Redis cache")
+		return "", err
+	}
+	return val, nil
 }
 
 func SetInCache(key string, value string) error {
-	return redisClient.Set(context.Background(), key, value, 0).Err()
+	err := redisClient.Set(context.Background(), key, value, 0).Err()
+	if err != nil {
+		log.Error().Err(err).Msg("Error setting data in Redis cache")
+		return err
+	}
+	return nil
 }

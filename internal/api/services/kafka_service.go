@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rs/zerolog/log" // Импортируйте zerolog
 	"github.com/segmentio/kafka-go"
 	"sync"
 )
@@ -28,11 +29,12 @@ func (ks *KafkaService) ConsumeMessages() {
 	for {
 		msg, err := reader.ReadMessage(context.Background())
 		if err != nil {
-			fmt.Printf("Error reading Kafka message: %v\n", err)
+			log.Error().Err(err).Msg("Error reading Kafka message")
 			return
 		}
 		var person models.Input
 		if err := json.Unmarshal(msg.Value, &person); err != nil {
+			log.Error().Err(err).Msg("Error parsing Kafka message")
 			ks.SendToFIOfailed(fmt.Sprintf("Error parsing Kafka message: %v", err))
 			return
 		}
@@ -45,8 +47,8 @@ func (ks *KafkaService) ConsumeMessages() {
 }
 
 func (ks *KafkaService) ProcessFIOMessage(person models.Input) {
-	fmt.Println("ProcessFIOMessage: ", person.Name)
 	if !isValidPerson(person) {
+		log.Error().Msg("Invalid person data: missing required fields or incorrect format")
 		ks.SendToFIOfailed("Invalid person data: missing required fields or incorrect format")
 		return
 	}
@@ -65,7 +67,9 @@ func (ks *KafkaService) SendToFIOfailed(reason string) {
 	fioFailedTopic := "FIO_FAILED"
 	message := []byte(reason)
 
-	ks.ProduceMessage(fioFailedTopic, message)
+	if err := ks.ProduceMessage(fioFailedTopic, message); err != nil {
+		log.Error().Err(err).Msg("Error producing message")
+	}
 }
 
 func (ks *KafkaService) ProduceMessage(topic string, message []byte) error {

@@ -2,9 +2,8 @@ package configs
 
 import (
 	"context"
-	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
-	"log"
 	"os"
 )
 
@@ -28,7 +27,7 @@ func InitKafkaWriter() *kafka.Writer {
 	}
 	err := createKafkaTopic(topicName, address[0])
 	if err != nil {
-		log.Fatalf("Error creating Kafka topic: %v", err)
+		log.Fatal().Err(err).Msg("Error creating Kafka topic")
 	}
 	message := []byte(`{
         "name": "Dmitriy",
@@ -42,9 +41,9 @@ func InitKafkaWriter() *kafka.Writer {
 		},
 	)
 	if err != nil {
-		log.Fatal("failed to write messages:", err)
+		log.Fatal().Err(err).Msg("Failed to write messages")
 	} else {
-		fmt.Println("Message sent to Kafka successfully")
+		log.Info().Msg("Message sent to Kafka successfully")
 	}
 	return w
 }
@@ -67,6 +66,6 @@ func createKafkaTopic(topicName, brokerAddress string) error {
 		return err
 	}
 
-	fmt.Printf("Kafka topic '%s' created successfully\n", topicName)
+	log.Info().Msgf("Kafka topic '%s' created successfully", topicName)
 	return nil
 }

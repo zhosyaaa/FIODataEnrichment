@@ -1,7 +1,7 @@
 package db
 
 import (
-	"fmt"
+	"github.com/rs/zerolog/log"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"os"
@@ -17,8 +17,9 @@ func InitDatabase() {
 		SkipDefaultTransaction: true,
 	})
 	if err != nil {
-		fmt.Printf("Error connecting to database: %v\n", err)
+		log.Error().Err(err).Msg("Error connecting to database")
 		return
 	}
 	DB = db
+	log.Info().Msg("Connected to the database")
 }

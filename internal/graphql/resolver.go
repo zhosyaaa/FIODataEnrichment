@@ -66,6 +66,7 @@ func (r *Resolver) resolveCreatePerson(ctx context.Context, Input models.Input) 
 		Patronymic: Input.Patronymic,
 	}
 	fio := fmt.Sprintf("%s %s %s", newPerson.Name, newPerson.Surname, newPerson.Patronymic)
+	go r.EnrichmentService.EnrichAndSaveFIO()
 	r.EnrichmentService.FIOChannel <- fio
 	return newPerson, nil
 }

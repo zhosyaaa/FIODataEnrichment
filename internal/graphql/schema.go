@@ -1,10 +1,12 @@
 package graphql
 
 import (
+	"TestCase/internal/db"
 	"TestCase/internal/models"
 	"TestCase/internal/repository"
 	"errors"
 	"github.com/graphql-go/graphql"
+	"github.com/rs/zerolog/log" // Импортируйте zerolog
 	"strconv"
 )
 
@@ -28,7 +30,10 @@ var (
 			"persons": &graphql.Field{
 				Type: graphql.NewList(personType),
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
+					pr := repository.PersonRepositoryImpl{
+						DB: db.DB,
+					}
+					resolver := NewResolver(&pr)
 					return resolver.resolvePersons(p.Context)
 				},
 			},
@@ -41,9 +46,13 @@ var (
 					id := p.Args["id"].(string)
 					idValue, err := strconv.Atoi(id)
 					if err != nil {
-						return nil, err
+						log.Error().Err(err).Msg("Invalid person ID")
+						return nil, errors.New("Invalid person ID")
 					}
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
+					pr := repository.PersonRepositoryImpl{
+						DB: db.DB,
+					}
+					resolver := NewResolver(&pr)
 					return resolver.resolvePerson(p.Context, idValue)
 				},
 			},
@@ -60,7 +69,10 @@ var (
 					age, _ := p.Args["age"].(int)
 					page, _ := p.Args["page"].(int)
 					perPage, _ := p.Args["perPage"].(int)
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
+					pr := repository.PersonRepositoryImpl{
+						DB: db.DB,
+					}
+					resolver := NewResolver(&pr)
 					args := struct {
 						Gender  *string
 						Age     *int
@@ -87,31 +99,56 @@ var (
 					"input": &graphql.ArgumentConfig{Type: InputType},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					input := p.Args["input"].(models.Input)
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
+					input, ok := p.Args["input"].(map[string]interface{})
+					if !ok {
+						log.Error().Msg("Invalid input format")
+						return nil, errors.New("Invalid input format")
+					}
+					name, nameOk := input["name"].(string)
+					surname, surnameOk := input["surname"].(string)
+					patronymic, patronymicOk := input["patronymic"].(string)
 
-					return resolver.resolveCreatePerson(p.Context, input)
+					if !nameOk || !surnameOk || !patronymicOk {
+						log.Error().Msg("Name, surname, and patronymic are required fields")
+						return nil, errors.New("Name, surname, and patronymic are required fields")
+					}
+					newPerson := models.Input{
+						Name:       name,
+						Surname:    surname,
+						Patronymic: patronymic,
+					}
+					pr := repository.PersonRepositoryImpl{
+						DB: db.DB,
+					}
+					resolver := NewResolver(&pr)
+					return resolver.resolveCreatePerson(p.Context, newPerson)
 				},
 			},
 			"updatePerson": &graphql.Field{
 				Type: personType,
 				Args: graphql.FieldConfigArgument{
+					"input": &graphql.ArgumentConfig{Type: UpdateType},
 					"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.ID)},
-					"input": &graphql.ArgumentConfig{Type: personType},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
+					pr := repository.PersonRepositoryImpl{
+						DB: db.DB,
+					}
+					resolver := NewResolver(&pr)
 					id, idOK := p.Args["id"].(string)
 					input, inputOK := p.Args["input"].(map[string]interface{})
 					if !idOK || !inputOK {
+						log.Error().Msg("Invalid argument types")
 						return nil, errors.New("Invalid argument types")
 					}
 					idValue, err := strconv.Atoi(id)
 					person, err := resolver.resolvePerson(p.Context, idValue)
 					if err != nil {
+						log.Error().Err(err).Msg("Person not found")
 						return nil, err
 					}
 					if err != nil {
+						log.Error().Err(err).Msg("Error updating person")
 						return nil, err
 					}
 					if name, ok := input["name"].(string); ok {
@@ -134,6 +171,7 @@ var (
 					}
 					updatedPerson, err := resolver.resolveUpdatePerson(p.Context, idValue, *person)
 					if err != nil {
+						log.Error().Err(err).Msg("Error updating person")
 						return nil, err
 					}
 
@@ -148,16 +186,22 @@ var (
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					id, idOK := p.Args["id"].(string)
 					if !idOK {
+						log.Error().Msg("Invalid argument types")
 						return false, errors.New("Invalid argument types")
 					}
 					idValue, err := strconv.Atoi(id)
 					if err != nil {
+						log.Error().Err(err).Msg("Invalid person ID")
 						return false, err
 					}
 
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
+					pr := repository.PersonRepositoryImpl{
+						DB: db.DB,
+					}
+					resolver := NewResolver(&pr)
 					success, err := resolver.resolveDeletePerson(p.Context, idValue)
 					if err != nil {
+						log.Error().Err(err).Msg("Error deleting person")
 						return false, err
 					}
 
@@ -178,6 +222,30 @@ var InputType = graphql.NewInputObject(graphql.InputObjectConfig{
 			Type: graphql.String,
 		},
 		"patronymic": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+	},
+})
+
+var UpdateType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "Input",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"surname": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"patronymic": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"age": &graphql.InputObjectFieldConfig{
+			Type: graphql.Int,
+		},
+		"gender": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"nationality": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
 		},
 	},
