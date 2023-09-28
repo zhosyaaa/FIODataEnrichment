@@ -28,7 +28,7 @@ var (
 			"persons": &graphql.Field{
 				Type: graphql.NewList(personType),
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepositoryImpl))
+					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
 					return resolver.resolvePersons(p.Context)
 				},
 			},
@@ -43,7 +43,7 @@ var (
 					if err != nil {
 						return nil, err
 					}
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepositoryImpl))
+					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
 					return resolver.resolvePerson(p.Context, idValue)
 				},
 			},
@@ -60,7 +60,7 @@ var (
 					age, _ := p.Args["age"].(int)
 					page, _ := p.Args["page"].(int)
 					perPage, _ := p.Args["perPage"].(int)
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepositoryImpl))
+					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
 					args := struct {
 						Gender  *string
 						Age     *int
@@ -88,7 +88,7 @@ var (
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 					input := p.Args["input"].(models.Input)
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepositoryImpl))
+					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
 
 					return resolver.resolveCreatePerson(p.Context, input)
 				},
@@ -100,7 +100,7 @@ var (
 					"input": &graphql.ArgumentConfig{Type: personType},
 				},
 				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepositoryImpl))
+					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
 					id, idOK := p.Args["id"].(string)
 					input, inputOK := p.Args["input"].(map[string]interface{})
 					if !idOK || !inputOK {
@@ -155,7 +155,7 @@ var (
 						return false, err
 					}
 
-					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepositoryImpl))
+					resolver := NewResolver(p.Context.Value("personRepository").(repository.PersonRepository))
 					success, err := resolver.resolveDeletePerson(p.Context, idValue)
 					if err != nil {
 						return false, err

@@ -1,14 +1,14 @@
 package main
 
 import (
+	"TestCase/internal/api/controllers"
+	"TestCase/internal/api/routes"
+	services2 "TestCase/internal/api/services"
 	"TestCase/internal/configs"
-	"TestCase/internal/controllers"
 	"TestCase/internal/db"
 	"TestCase/internal/graphql"
 	"TestCase/internal/redis"
 	"TestCase/internal/repository"
-	"TestCase/internal/routes"
-	"TestCase/internal/services"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -34,7 +34,7 @@ func main() {
 
 	router := gin.Default()
 	personRepository := repository.NewPersonRepository(db.DB)
-	enrichmentService := services.NewEnrichmentService(
+	enrichmentService := services2.NewEnrichmentService(
 		&http.Client{},
 		&http.Client{},
 		&http.Client{},
@@ -46,10 +46,10 @@ func main() {
 
 	kafkaReader := configs.InitKafkaReader()
 	kafkaWriter := configs.InitKafkaWriter()
-	kafkaService := services.NewKafkaService(kafkaReader, kafkaWriter, enrichmentService)
+	kafkaService := services2.NewKafkaService(kafkaReader, kafkaWriter, enrichmentService)
 	go kafkaService.ConsumeMessages()
 
-	GraphQLResolver := graphql.NewResolver(*personRepository)
+	GraphQLResolver := graphql.NewResolver(personRepository)
 	cacheClient := redis.NewCacheClient(redisClient)
 	apiController := controllers.NewAPIController(personRepository, *cacheClient, enrichmentService)
 	apiRoutes := routes.NewRoutes(*apiController, GraphQLResolver)

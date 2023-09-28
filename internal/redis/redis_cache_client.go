@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+type RedisClientInterface interface {
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+	Del(ctx context.Context, keys ...string) error
+}
+
 type CacheClient struct {
 	client *redis.Client
 	ctx    context.Context

@@ -1,7 +1,7 @@
 package routes
 
 import (
-	apiController "TestCase/internal/controllers"
+	apiController "TestCase/internal/api/controllers"
 	"TestCase/internal/graphql"
 	"github.com/gin-gonic/gin"
 	"github.com/graphql-go/handler"

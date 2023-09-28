@@ -1,20 +1,21 @@
 package graphql
 
 import (
+	"TestCase/internal/api/services"
+	"TestCase/internal/db"
 	"TestCase/internal/models"
 	"TestCase/internal/repository"
-	"TestCase/internal/services"
 	"context"
 	"fmt"
 	"net/http"
 )
 
 type Resolver struct {
-	PersonRepository  repository.PersonRepositoryImpl
+	PersonRepository  repository.PersonRepository
 	EnrichmentService services.EnrichmentService
 }
 
-func NewResolver(personRepository repository.PersonRepositoryImpl) *Resolver {
+func NewResolver(personRepository repository.PersonRepository) *Resolver {
 	return &Resolver{PersonRepository: personRepository}
 }
 
@@ -49,14 +50,16 @@ func (r *Resolver) resolveFilteredPersons(ctx context.Context, args struct {
 }
 
 func (r *Resolver) resolveCreatePerson(ctx context.Context, Input models.Input) (*models.Person, error) {
+	personService := &repository.PersonRepositoryImpl{DB: db.DB}
 	r.EnrichmentService = *services.NewEnrichmentService(
 		&http.Client{},
 		&http.Client{},
 		&http.Client{},
-		&r.PersonRepository,
+		personService,
 		make(chan string),
 		nil,
 	)
+
 	newPerson := &models.Person{
 		Name:       Input.Name,
 		Surname:    Input.Surname,

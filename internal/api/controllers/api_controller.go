@@ -1,10 +1,10 @@
 package controllers
 
 import (
+	"TestCase/internal/api/services"
 	"TestCase/internal/models"
 	"TestCase/internal/redis"
 	"TestCase/internal/repository"
-	"TestCase/internal/services"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
